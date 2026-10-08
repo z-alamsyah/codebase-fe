@@ -7,9 +7,10 @@ const input = process.env.OPENAPI_INPUT ?? "../codebase-go/gen/openapi/swagger.j
 
 export default defineConfig({
   input,
+  // Raw generator output (no Prettier): identical on every machine and in CI,
+  // where the contract check compares it with the committed files.
   output: {
     path: "src/lib/api/generated",
-    postProcess: ["prettier"],
   },
   plugins: [
     {
