@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    env:
+      # No secrets in CI: env is validated when the server starts.
+      SKIP_ENV_VALIDATION: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4 # version from "packageManager" in package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  api-contract:
+    name: Generated API client matches the backend spec
+    runs-on: ubuntu-latest
+    steps:
+      # Same layout as local development: codebase-fe next to codebase-go.
+      - uses: actions/checkout@v5
+        with:
+          path: codebase-fe
+      - uses: actions/checkout@v5
+        with:
+          repository: z-alamsyah/codebase-go
+          path: codebase-go
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: codebase-fe/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: codebase-fe/.nvmrc
+          cache: pnpm
+          cache-dependency-path: codebase-fe/pnpm-lock.yaml
+      - name: Regenerate the client and compare
+        working-directory: codebase-fe
+        run: |
+          if [ ! -f ../codebase-go/gen/openapi/swagger.json ]; then
+            echo "::notice::codebase-go has no gen/openapi/swagger.json yet, skipping the contract check"
+            exit 0
+          fi
+          pnpm install --frozen-lockfile
+          pnpm gen:api
+          git diff --exit-code -- src/lib/api/generated || {
+            echo "::error::src/lib/api/generated is out of date. Run 'pnpm gen:api' and commit the result."
+            exit 1
+          }
