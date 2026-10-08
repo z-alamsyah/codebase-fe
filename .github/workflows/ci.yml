@@ -41,11 +41,11 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: codebase-fe/package.json
+      # No dependency cache here: when the backend spec is missing the job
+      # exits before installing, and saving an empty cache fails the job.
       - uses: actions/setup-node@v5
         with:
           node-version-file: codebase-fe/.nvmrc
-          cache: pnpm
-          cache-dependency-path: codebase-fe/pnpm-lock.yaml
       - name: Regenerate the client and compare
         working-directory: codebase-fe
         run: |
