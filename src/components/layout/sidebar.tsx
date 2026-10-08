@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { toggleSidebar, useSidebarOpen } from "@/stores/ui-store";
+import { useUiStore } from "@/stores/ui-store-provider";
 
 export function Sidebar({ tenant }: { tenant: string }) {
-  const open = useSidebarOpen();
+  const open = useUiStore((s) => s.sidebarOpen);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const pathname = usePathname();
   const links = [
     { href: `/${tenant}`, label: "Overview" },

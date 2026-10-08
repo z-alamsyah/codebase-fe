@@ -1,20 +1,30 @@
-import { createStore, useSelector } from "@tanstack/react-store";
+import { createStore } from "zustand/vanilla";
 
 /**
- * Global client-side UI state (TanStack Store). Keep it small: server data
- * belongs in TanStack Query, filters and pagination belong in the URL.
- * @tanstack/react-store is still 0.x, so all usage goes through this file.
+ * Global client-side UI state (Zustand). Keep it small: server data belongs
+ * in TanStack Query, filters and pagination belong in the URL.
+ *
+ * The store is created per request through UiStoreProvider instead of being a
+ * module-level global: a Next.js server renders many requests at once, and a
+ * global store would share state between users.
  */
-type UiState = {
+export type UiState = {
   sidebarOpen: boolean;
 };
 
-const uiStore = createStore<UiState>({ sidebarOpen: true });
+export type UiActions = {
+  toggleSidebar: () => void;
+};
 
-export function useSidebarOpen(): boolean {
-  return useSelector(uiStore, (s) => s.sidebarOpen);
+export type UiStore = UiState & UiActions;
+
+export const defaultUiState: UiState = { sidebarOpen: true };
+
+export function createUiStore(initState: UiState = defaultUiState) {
+  return createStore<UiStore>()((set) => ({
+    ...initState,
+    toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  }));
 }
 
-export function toggleSidebar(): void {
-  uiStore.setState((s) => ({ ...s, sidebarOpen: !s.sidebarOpen }));
-}
+export type UiStoreApi = ReturnType<typeof createUiStore>;

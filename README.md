@@ -1,6 +1,6 @@
 # codebase-fe
 
-Template frontend berbasis **Next.js 16 (App Router)** dan **TanStack** (Query, Form, Store), pasangan dari backend [`codebase-go`](https://github.com/z-alamsyah/codebase-go). Login memakai **Zitadel** (OIDC), role per tenant (multi-tenant), dan semua panggilan ke backend lewat **BFF** sehingga token tidak pernah sampai ke browser.
+Template frontend berbasis **Next.js 16 (App Router)** **TanStack** (Query, Form), dan **Zustand**, pasangan dari backend [`codebase-go`](https://github.com/z-alamsyah/codebase-go). Login memakai **Zitadel** (OIDC), role per tenant (multi-tenant), dan semua panggilan ke backend lewat **BFF** sehingga token tidak pernah sampai ke browser.
 
 Aturan codebase ada di [`docs/CODEBASE_RULES.md`](docs/CODEBASE_RULES.md). Panduan lengkap integrasi Zitadel (backend + frontend) ada di [`codebase-go/docs/ZITADEL_INTEGRATION.md`](https://github.com/z-alamsyah/codebase-go/blob/main/docs/ZITADEL_INTEGRATION.md).
 
@@ -43,7 +43,7 @@ Aturan codebase ada di [`docs/CODEBASE_RULES.md`](docs/CODEBASE_RULES.md). Pandu
 | Framework           | Next.js (App Router, Cache Components)          | 16.4                    |
 | Data dari server    | @tanstack/react-query                           | 5.104                   |
 | Form                | @tanstack/react-form + zod                      | 1.33 / 4.6              |
-| State global client | @tanstack/react-store                           | 0.11                    |
+| State global client | zustand                                         | 5.0                     |
 | Client API          | @hey-api/openapi-ts                             | 0.99                    |
 | Auth                | @zitadel/next-auth + @auth/core + openid-client | 1.1 / 0.41 / 6.8        |
 | UI                  | Tailwind CSS + shadcn/ui (Base UI)              | 4.3                     |
@@ -125,7 +125,7 @@ src/proxy.ts (setiap request): baca session, refresh token kalau hampir kedaluwa
 │   │   ├── config/env.ts              # validasi env
 │   │   ├── logger/                    # pino + redaction
 │   │   └── query/                     # QueryClient + provider
-│   ├── stores/ui-store.ts             # TanStack Store
+│   ├── stores/                        # Zustand: ui-store.ts + ui-store-provider.tsx
 │   ├── test/                          # setup Vitest + MSW
 │   ├── instrumentation.ts             # validasi env saat server start
 │   └── proxy.ts                       # refresh session, redirect, CSP
@@ -291,9 +291,15 @@ Contoh: fitur `orders`.
 | State di URL        | `params` / `searchParams` | tenant aktif, id user              |
 | State lokal         | `useState`                | pesan error form                   |
 | Form                | TanStack Form + zod       | `CreateUserForm`                   |
-| State global client | TanStack Store            | `src/stores/ui-store.ts` (sidebar) |
+| State global client | Zustand                   | `src/stores/ui-store.ts` (sidebar) |
 
 Data server tidak pernah disalin ke store. Query key memuat tenant, jadi cache antar tenant tidak tercampur. Retry otomatis hanya untuk error jaringan dan 5xx.
+
+**Zustand** mengikuti panduan resmi Zustand untuk Next.js: store tidak dibuat global, tapi per request lewat `UiStoreProvider` (dipasang di `src/app/layout.tsx`), karena server Next.js merender banyak request sekaligus. Cara menambah state global:
+
+1. Tambah field dan action di `src/stores/ui-store.ts` (`UiState`, `UiActions`, `createUiStore`), atau buat store baru dengan pola yang sama untuk domain lain.
+2. Baca di Client Component dengan selector: `const open = useUiStore((s) => s.sidebarOpen)`. Satu selector per nilai, supaya komponen hanya re-render saat nilai itu berubah.
+3. Jangan simpan data dari backend atau data rahasia di store.
 
 ---
 

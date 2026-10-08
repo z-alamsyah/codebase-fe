@@ -1,6 +1,6 @@
-# Codebase Rules - Frontend (Next.js + TanStack)
+# Codebase Rules - Frontend (Next.js + TanStack + Zustand)
 
-Aturan baku untuk setup dan mengembangkan codebase frontend. Stack utamanya **Next.js (App Router)** dan **TanStack** (Query untuk data dari server, Form, Table, Store). Dokumen ini pasangan dari `docs/CODEBASE_RULES.md` di repo backend (`codebase-go`), jadi istilah dan prinsipnya dibuat sejalan.
+Aturan baku untuk setup dan mengembangkan codebase frontend. Stack utamanya **Next.js (App Router)**, **TanStack** (Query untuk data dari server, Form, Table), dan **Zustand** untuk state global di sisi client. Dokumen ini pasangan dari `docs/CODEBASE_RULES.md` di repo backend (`codebase-go`), jadi istilah dan prinsipnya dibuat sejalan.
 
 ## 0. Cara Pakai Dokumen Ini
 
@@ -79,7 +79,7 @@ src/
 ├── features/<fitur>/{components,api,schemas,utils}/
 ├── components/ui/
 ├── lib/{api,auth,backend,config,logger,query}/
-├── stores/                         # TanStack Store (state global sisi client, minimal)
+├── stores/                         # Zustand (state global sisi client, minimal)
 └── proxy.ts                        # redirect awal (bukan pengaman utama)
 ```
 
@@ -93,16 +93,17 @@ src/
 | State di URL             | `searchParams` (boleh pakai `nuqs`) | Filter, halaman, sort, tab aktif     |
 | State lokal komponen     | `useState` / `useReducer`           | Dialog terbuka, input sementara      |
 | State form               | **TanStack Form** + zod             | Form create/edit                     |
-| State global sisi client | **TanStack Store**                  | Tema, sidebar, wizard lintas halaman |
+| State global sisi client | **Zustand**                         | Tema, sidebar, wizard lintas halaman |
 
 1. **WAJIB** - Data dari server hanya disimpan di cache TanStack Query. Dilarang menyalinnya ke store global atau `useState`.
 2. **WAJIB** - Filter, pagination, dan pencarian disimpan di URL supaya bisa di-share dan tombol back browser bekerja.
 3. **WAJIB** - Query key dan `queryOptions` diambil dari hasil generate client. Setelah mutation sukses, invalidate query yang terkait.
 4. **WAJIB** - `QueryClient` dibuat baru per request di server, dan satu instance di browser. Default `staleTime` di atas 0 (contoh 60 detik) supaya data hasil prefetch server tidak langsung di-fetch ulang.
 5. **WAJIB** - Jangan retry otomatis untuk error 4xx. Retry hanya untuk error jaringan atau 5xx.
-6. **DISARANKAN** - TanStack Store dipakai seminimal mungkin. Catatan: versinya masih 0.x, jadi API-nya masih bisa berubah. Bungkus pemakaiannya di `src/stores` supaya mudah diganti.
+6. **WAJIB** - Zustand dipakai seminimal mungkin, hanya untuk state UI yang dipakai lintas komponen atau halaman.
 7. **DISARANKAN** - Data penting untuk halaman pertama di-prefetch di Server Component lalu dikirim lewat `HydrationBoundary`, supaya tidak ada loading kosong. Query key hasil prefetch harus sama persis dengan yang dipakai browser.
 8. **WAJIB** - Next.js 16 mengaktifkan Cache Components secara default. Data yang bergantung pada request (cookie/session, `headers()`, `params` dinamis) dibaca di dalam `<Suspense>` atau di route segment yang punya `loading.tsx`. Jangan `await` data seperti itu di level atas layout. Peringatan `blocking-prerender-dynamic` di `pnpm dev` harus diperbaiki, bukan diabaikan.
+9. **WAJIB** - Store Zustand **tidak boleh** jadi variabel global level modul. Server Next.js merender banyak request sekaligus, jadi store global bisa membagi state antar user. Buat store dengan `createStore` (`zustand/vanilla`) di dalam Provider (sekali per request/page load), lalu baca lewat hook dengan selector (contoh `useUiStore((s) => s.sidebarOpen)`). Server Component tidak membaca atau menulis store.
 
 ---
 
@@ -284,7 +285,7 @@ Versi stabil saat dokumen ditulis (Oktober 2026). Cek ulang saat setup.
 | Data dari server    | @tanstack/react-query                           | 5.104            | + `@tanstack/react-query-devtools`                                                        |
 | Form                | @tanstack/react-form                            | 1.33             | + zod                                                                                     |
 | Tabel               | @tanstack/react-table                           | 9.2              |                                                                                           |
-| State global client | @tanstack/react-store                           | 0.11             | Masih 0.x                                                                                 |
+| State global client | zustand                                         | 5.0              | Store per request lewat Provider, bukan global                                            |
 | Validasi            | zod                                             | 4.6              |                                                                                           |
 | Generate client API | @hey-api/openapi-ts                             | 0.99             | Masih 0.x; mendukung Swagger 2.0 dari swag. Pin versi persis.                             |
 | Auth                | @zitadel/next-auth + @auth/core + openid-client | 1.1 / 0.41 / 6.8 | Berbasis contoh resmi Zitadel untuk Next.js, dengan perbaikan di `ZITADEL_INTEGRATION.md` |

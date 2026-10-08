@@ -49,6 +49,12 @@ test("login, create a user, view it, and log out", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /^Tenant / })).toBeVisible();
   const tenant = new URL(page.url()).pathname.split("/")[1];
 
+  // Global UI state (Zustand): the sidebar can be collapsed.
+  await page.getByRole("button", { name: "Toggle sidebar" }).click();
+  await expect(page.getByRole("navigation")).toBeHidden();
+  await page.getByRole("button", { name: "Toggle sidebar" }).click();
+  await expect(page.getByRole("navigation")).toBeVisible();
+
   // Client-side validation.
   await page.getByRole("link", { name: "Create a user" }).click();
   await page.getByRole("button", { name: "Create user" }).click();
